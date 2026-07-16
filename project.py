@@ -69,3 +69,8 @@ print("missing value", pd.isnull(billing_data).sum())
 
 department_data["Remarks"]= department_data["Remarks"].fillna("No Remarks")
 print("Missing Value", pd.isnull(department_data).sum())
+
+diagnosis_data["FollowUp"] =diagnosis_data["FollowUp"].fillna(Not Scheduled)
+diagnosis_data["Notes"] = diagnosis_data["Notes"].fillna("Unknown")
+print(pd.isnull(diagnosis_data).sum())
+print(diagnosis_data["FollowUp"].head(),diagnosis_data["Notes"].head() )
