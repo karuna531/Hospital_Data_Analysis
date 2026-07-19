@@ -56,6 +56,8 @@ appointment = appointment_data.drop_duplicates(subset=["AppointmentID"], keep = 
 diagnosis = diagnosis_data.drop_duplicates(subset=["DiagnosisID"], keep = "first")
 doctor = doctor_data.drop_duplicates(subset=["DoctorID"], keep ="first")
 pharmacy = pharmacy_data.drop_duplicates(subset=["SaleID"], keep = "first")
+department = department_data.drop_duplicates(subset=["Department"], keep="first")
+
 
 
 # standardarize 
@@ -95,6 +97,29 @@ print("leading and trailing space is removed")
 #Convert dates into datetime format. 
 joining_date = pd.to_datetime( doctor_data["JoiningDate"], errors='coerce')
 print(joining_date.min())
+
+# converting Bill columns to numeric
+billing_data["Total"] =pd.to_numeric(billing_data["Total"], errors="coerce")
+
+#finding invalid age
+invalid_age = (patient_data["Age"] < 0) | (patient_data["Age"] > 150)
+print("invalid_age", invalid_age.sum())
+patient_data["Age"] = patient_data.loc[invalid_age, "Age"] = pd.NA
+# Remove negative bills
+# negative_bill = billing_data["Total"] < 0
+# print("Negative Bill", negative_bill.sum())
+# billing_data["Total"] = billing_data.loc[negative_bill, "Total"] = pd.NA
+
+bill_amount_cols = ['Consultation', 'Procedure', 'Lab', 'Discount', 'Tax', 'Total']
+
+neg_mask = (billing_data[bill_amount_cols] < 0).any(axis=1)
+neg_count = neg_mask.sum()
+
+billing_data = billing_data.loc[~neg_mask].reset_index(drop=True)
+
+print(f"Removed {neg_count} rows containing a negative bill amount.")
+
+
 #replace null
 consultation_mean = billing_data["Consultation"].mean()
 billing_data["Consultation"] = billing_data["Consultation"].fillna(consultation_mean)
@@ -111,9 +136,14 @@ insurance_data["Provider"] = insurance_data["Provider"].fillna( insurance_data["
 patient_data["BloodGroup"]= patient_data["BloodGroup"].fillna("unidentified")
 # mode = patient_data["Insurance"].mode()[0]
 patient_data["Insurance"]=patient_data["Insurance"].fillna("Unknown")
-patient_data["Age"]=patient_data["Age"].fillna(patient_data["Age"].mean())
+patient_data["Age"]=patient_data["Age"].fillna(patient_data["Age"].median())
 patient_data["Gender"] = patient_data["Gender"].fillna("unidentified")
 patient_data["District"] = patient_data["District"].fillna("Not Mentioned")
 pharmacy_data["PaymentMethod"]= pharmacy_data["PaymentMethod"].fillna(pharmacy_data["PaymentMethod"].mode()[0])
 
-
+# merging all excel file to master dataset
+master = visit_data.copy()
+master = master.merge(patient_data, on = "PatientID", how="left", suffixes=("","_patient"))
+master = master.merge(appointment_data, on="AppointmentID", how= "left", suffixes=("","_appointment"))
+master = master.merge(doctor_data, on="DoctorID", how="left", suffixes=("","_doctor"))
+master = master.merge(insurance_data, on="PatientID", how="left", suffixes=("", "_insurance"))
