@@ -57,7 +57,19 @@ diagnosis = diagnosis_data.drop_duplicates(subset=["DiagnosisID"], keep = "first
 doctor = doctor_data.drop_duplicates(subset=["DoctorID"], keep ="first")
 pharmacy = pharmacy_data.drop_duplicates(subset=["SaleID"], keep = "first")
 department = department_data.drop_duplicates(subset=["Department"], keep="first")
+insurance = insurance_data.drop_duplicates(subset=["InsuranceID"], keep="first")
+billing = billing_data.sort_values("BillID").drop_duplicates(subset=["VisitID"], keep="first")
+insurance = insurance.sort_values("InsuranceID").drop_duplicates(
+    subset="PatientID", keep="first"
+)
 
+diagnosis = diagnosis.sort_values("DiagnosisID").drop_duplicates(
+    subset="PatientID", keep="first"
+)
+
+pharmacy = pharmacy.sort_values("SaleID").drop_duplicates(
+    subset="PatientID", keep="first"
+)
 
 
 # standardarize 
@@ -79,14 +91,14 @@ department_data["Department"] = department_data["Department"].astype(str).str.st
 
 # remove leading and trailing space
 dataset = [
-    appointment_data,
-    billing_data,
-    department_data,
-    diagnosis_data,
-    doctor_data,
-    insurance_data,
+    appointment,
+    billing,
+    department,
+    diagnosis,
+    doctor,
+    insurance,
     patient_data,
-    pharmacy_data,
+    pharmacy,
     visit_data
 ]
 for df in dataset:
@@ -95,11 +107,11 @@ for df in dataset:
 print("leading and trailing space is removed")
 
 #Convert dates into datetime format. 
-joining_date = pd.to_datetime( doctor_data["JoiningDate"], errors='coerce')
+joining_date = pd.to_datetime( doctor["JoiningDate"], errors='coerce')
 print(joining_date.min())
 
 # converting Bill columns to numeric
-billing_data["Total"] =pd.to_numeric(billing_data["Total"], errors="coerce")
+billing_data["Total"] =pd.to_numeric(billing["Total"], errors="coerce")
 
 #finding invalid age
 invalid_age = (patient_data["Age"] < 0) | (patient_data["Age"] > 150)
@@ -112,38 +124,53 @@ patient_data["Age"] = patient_data.loc[invalid_age, "Age"] = pd.NA
 
 bill_amount_cols = ['Consultation', 'Procedure', 'Lab', 'Discount', 'Tax', 'Total']
 
-neg_mask = (billing_data[bill_amount_cols] < 0).any(axis=1)
+neg_mask = (billing[bill_amount_cols] < 0).any(axis=1)
 neg_count = neg_mask.sum()
 
-billing_data = billing_data.loc[~neg_mask].reset_index(drop=True)
+billing_data = billing.loc[~neg_mask].reset_index(drop=True)
 
 print(f"Removed {neg_count} rows containing a negative bill amount.")
 
 
 #replace null
-consultation_mean = billing_data["Consultation"].mean()
-billing_data["Consultation"] = billing_data["Consultation"].fillna(consultation_mean)
+consultation_mean = billing["Consultation"].mean()
+billing["Consultation"] = billing["Consultation"].fillna(consultation_mean)
 
-billing_data["Total"] =billing_data["Total"].fillna( billing_data["Lab"]- billing_data["Discount"] + billing_data["Tax"])
-billing_data["PaymentMethod"] = billing_data["PaymentMethod"].fillna(billing_data["PaymentMethod"].mode()[0])
+billing["Total"] =billing["Total"].fillna( billing_data["Lab"]- billing_data["Discount"] + billing_data["Tax"])
+billing["PaymentMethod"] = billing["PaymentMethod"].fillna(billing["PaymentMethod"].mode()[0])
 
 
-department_data["Remarks"]= department_data["Remarks"].fillna("No Remarks")
+department["Remarks"]= department["Remarks"].fillna("No Remarks")
 
-diagnosis_data["FollowUp"] =diagnosis_data["FollowUp"].fillna("Not Scheduled")
-diagnosis_data["Notes"] = diagnosis_data["Notes"].fillna("Unknown")
-insurance_data["Provider"] = insurance_data["Provider"].fillna( insurance_data["Provider"].mode()[0])
+diagnosis["FollowUp"] =diagnosis["FollowUp"].fillna("Not Scheduled")
+diagnosis["Notes"] = diagnosis["Notes"].fillna("Unknown")
+insurance["Provider"] = insurance["Provider"].fillna( insurance_data["Provider"].mode()[0])
 patient_data["BloodGroup"]= patient_data["BloodGroup"].fillna("unidentified")
 # mode = patient_data["Insurance"].mode()[0]
 patient_data["Insurance"]=patient_data["Insurance"].fillna("Unknown")
 patient_data["Age"]=patient_data["Age"].fillna(patient_data["Age"].median())
 patient_data["Gender"] = patient_data["Gender"].fillna("unidentified")
 patient_data["District"] = patient_data["District"].fillna("Not Mentioned")
-pharmacy_data["PaymentMethod"]= pharmacy_data["PaymentMethod"].fillna(pharmacy_data["PaymentMethod"].mode()[0])
+pharmacy["PaymentMethod"]= pharmacy["PaymentMethod"].fillna(pharmacy_data["PaymentMethod"].mode()[0])
 
 # merging all excel file to master dataset
 master = visit_data.copy()
+print("Patients:", master.shape)
 master = master.merge(patient_data, on = "PatientID", how="left", suffixes=("","_patient"))
-master = master.merge(appointment_data, on="AppointmentID", how= "left", suffixes=("","_appointment"))
-master = master.merge(doctor_data, on="DoctorID", how="left", suffixes=("","_doctor"))
-master = master.merge(insurance_data, on="PatientID", how="left", suffixes=("", "_insurance"))
+print("Patients:", master.shape)
+master = master.merge(appointment, on="AppointmentID", how= "left", suffixes=("","_appointment"))
+print("Patients:", master.shape)
+master = master.merge(doctor, on="DoctorID", how="left", suffixes=("", "_doctor"))
+print("Doctor:", master.shape)
+master = master.merge(insurance, on="PatientID", how="left", suffixes=("", "_insurance"))
+print("insurance:", master.shape)
+master = master.merge(department, on="Department", how="left", suffixes=("", "_department"))
+master = master.merge(diagnosis, on="PatientID", how="left", suffixes=("", "_diagnosis"))
+master = master.merge(pharmacy, on="PatientID", how="left", suffixes=("", "_pharmacy"))
+master = master.merge(billing, on="VisitID", how="left", suffixes=("", "_billing"))
+print("Billing:", master.shape)
+print("Patients:", master.shape)
+
+master.to_excel("Output/hospital_cleaned_data.xlsx", index=False)
+master.to_csv("Output/hospital_cleaned_data.csv", index=False)
+print(master.head())
