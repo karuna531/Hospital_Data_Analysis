@@ -75,7 +75,7 @@ pharmacy = pharmacy.sort_values("SaleID").drop_duplicates(
 # standardarize 
 gender_map ={
     'm': 'Male', 'M': 'Male', 'Mal':'Male', 'male': 'Male', 'Male':'Male', 
-    'f': 'Female', 'fmale': 'Female', 'female':'Female', 'femal':'Female', 'FeMale':'FeMale'
+    'f': 'Female', 'fmale': 'Female', 'female':'Female', 'femal':'Female', 'FeMale':'FeMale', 'F': 'Female'
 }
 patient_data["Gender"] = patient_data["Gender"].astype(str).str.strip().replace(gender_map)
 print(department_data['Department'].unique())
@@ -174,3 +174,12 @@ print("Patients:", master.shape)
 master.to_excel("Output/hospital_cleaned_data.xlsx", index=False)
 master.to_csv("Output/hospital_cleaned_data.csv", index=False)
 print(master.head())
+#total patients
+total_patients = master["PatientID"].count()
+print("Total No of Patients:", total_patients)
+#no of male vs female
+male_vs_female = master.groupby("Gender").size()
+print(male_vs_female)
+#Unique patients.
+unique_patients = master["PatientID"].nunique()
+print("Unique Patients:", unique_patients) 
