@@ -183,3 +183,10 @@ print(male_vs_female)
 #Unique patients.
 unique_patients = master["PatientID"].nunique()
 print("Unique Patients:", unique_patients) 
+
+#Patients by district. 
+patient_by_district = master.groupby("District")["PatientID"].size()
+print("patient_by_district", patient_by_district)
+
+# Patients by age group.
+age_group = master["Age"] 
